@@ -13,7 +13,10 @@
     run_composer
     create_cache_directory
     run_deploy_scripts
+    generate_app_key
+    run_migrations
     update_symlinks
+    create_storage_directory
     delete_git_metadata
     clean_old_releases
     change_permission_owner
@@ -24,8 +27,6 @@
     echo 'Cloning repository'
     [ -d {{ $releases_dir }} ] || mkdir {{ $releases_dir }}
     git clone --depth 1 {{ $repository }} {{ $new_release_dir }}
-    cd {{ $new_release_dir }}
-    git reset --hard {{ $commit }}
 @endtask
 
 @task('run_composer')
@@ -56,20 +57,34 @@
     echo 'Running deployment scripts'
     cd {{ $new_release_dir }}
     php artisan optimize:clear
+@endtask
+
+@task('generate_app_key')
+    echo 'Generating application key'
+    cd {{ $new_release_dir }}
+    php artisan key:generate
+@endtask
+
+@task('run_migrations')
+    echo 'Running migrations'
+    cd {{ $new_release_dir }}
     php artisan migrate --force
 @endtask
 
 @task('update_symlinks')
-    echo 'Linking storage directory'
-    rm -rf {{ $new_release_dir }}/storage
-    ln -nfs {{ $app_dir }}/storage {{ $new_release_dir }}/storage
-
     echo 'Linking current release'
     ln -nfs {{ $new_release_dir }} {{ $app_dir }}/current
 
     echo 'Linking storage:link'
     rm -rf {{ $new_release_dir }}/public/storage
     php {{ $new_release_dir }}/artisan storage:link
+@endtask
+
+@task('create_storage_directory')
+    echo 'Creating storage directory in app_dir'
+    [ -d {{ $app_dir }}/storage ] || cp -r {{ $new_release_dir }}/storage {{ app_dir }}/storage
+    chown -R www-data:www-data {{ app_dir }}/storage
+    chmod -R 775 {{ app_dir }}/storage
 @endtask
 
 @task('delete_git_metadata')
@@ -80,7 +95,7 @@
 
 @task('change_permission_owner')
     echo 'Change Permission Owner'
-    cd {{  $new_release_dir }}
+    cd {{ $new_release_dir }}
     chown -R www-data:www-data .
 @endtask
 
