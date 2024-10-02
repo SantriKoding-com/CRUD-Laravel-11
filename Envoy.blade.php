@@ -72,6 +72,10 @@
 @endtask
 
 @task('update_symlinks')
+    echo 'Linking storage directory'
+    rm -rf {{ $new_release_dir }}/storage
+    ln -nfs {{ $app_dir }}/storage {{ $new_release_dir }}/storage
+
     echo 'Linking current release'
     ln -nfs {{ $new_release_dir }} {{ $app_dir }}/current
 
@@ -79,6 +83,7 @@
     rm -rf {{ $new_release_dir }}/public/storage
     php {{ $new_release_dir }}/artisan storage:link
 @endtask
+
 
 @task('create_storage_directory')
     echo 'Checking for existing storage directory in app_dir'
