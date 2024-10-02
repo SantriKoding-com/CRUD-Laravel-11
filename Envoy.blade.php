@@ -14,9 +14,9 @@
     create_cache_directory
     run_deploy_scripts
     generate_app_key
+    create_storage_directory
     run_migrations
     update_symlinks
-    create_storage_directory
     delete_git_metadata
     clean_old_releases
     change_permission_owner
@@ -60,30 +60,17 @@
 @endtask
 
 @task('generate_app_key')
-    echo 'Generating application key'
-    cd {{ $new_release_dir }}
-    php artisan key:generate
+    echo 'Checking for existing application key'
+    
+    # Periksa apakah APP_KEY sudah ada di .env
+    if ! grep -q '^APP_KEY=' {{ $app_dir }}/.env; then
+        echo 'Generating application key'
+        cd {{ $app_dir }}/current  # Pindah ke direktori current
+        php artisan key:generate
+    else
+        echo 'Application key already exists, skipping key generation'
+    fi
 @endtask
-
-@task('run_migrations')
-    echo 'Running migrations'
-    cd {{ $new_release_dir }}
-    php artisan migrate --force
-@endtask
-
-@task('update_symlinks')
-    echo 'Linking storage directory'
-    rm -rf {{ $new_release_dir }}/storage
-    ln -nfs {{ $app_dir }}/storage {{ $new_release_dir }}/storage
-
-    echo 'Linking current release'
-    ln -nfs {{ $new_release_dir }} {{ $app_dir }}/current
-
-    echo 'Linking storage:link'
-    rm -rf {{ $new_release_dir }}/public/storage
-    php {{ $new_release_dir }}/artisan storage:link
-@endtask
-
 
 @task('create_storage_directory')
     echo 'Checking for existing storage directory in app_dir'
@@ -96,6 +83,28 @@
         echo 'Storage directory already exists in app_dir, skipping creation.'
     fi
 @endtask
+
+@task('run_migrations')
+    echo 'Running migrations'
+    cd {{ $new_release_dir }}
+    php artisan migrate --force
+@endtask
+
+@task('update_symlinks')
+    echo 'Linking storage directory'
+    # Hapus symlink lama jika ada, tapi jangan hapus folder storage yang sudah ada
+    if [ -L {{ $new_release_dir }}/storage ]; then
+        rm {{ $new_release_dir }}/storage
+    fi
+    ln -nfs {{ $app_dir }}/storage {{ $new_release_dir }}/storage
+
+    echo 'Linking current release'
+    ln -nfs {{ $new_release_dir }} {{ $app_dir }}/current
+
+    echo 'Linking storage:link'
+    php {{ $new_release_dir }}/artisan storage:link
+@endtask
+
 
 @task('delete_git_metadata')
     echo 'Delete .git folder'
