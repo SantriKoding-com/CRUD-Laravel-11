@@ -86,8 +86,9 @@
 @endtask
 
 @task('run_migrations')
-    echo 'Running migrations'
+    echo 'Creating cache table if not exists and running migrations'
     cd {{ $new_release_dir }}
+    php artisan schema:dump
     php artisan migrate --force
 @endtask
 
