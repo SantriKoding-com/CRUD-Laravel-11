@@ -82,7 +82,7 @@
 
 @task('create_storage_directory')
     echo 'Creating storage directory in app_dir'
-    [ -d {{ $app_dir }}/storage ] || cp -r {{ $new_release_dir }}/storage {{ app_dir }}/storage
+    [ -d {{ $app_dir }}/storage ] || cp -r {{ $new_release_dir }}/storage {{ $app_dir }}/storage
     chown -R www-data:www-data {{ $app_dir }}/storage
     chmod -R 775 {{ $app_dir }}/storage
 @endtask
