@@ -12,10 +12,11 @@
     clone_repository
     run_composer
     create_cache_directory
-    run_deploy_scripts
+    link_env_file
     generate_app_key
     handle_storage_directory
     run_migrations
+    run_optimize
     update_symlinks
     delete_git_metadata
     clean_old_releases
@@ -50,13 +51,9 @@
     chmod -R 775 {{ $new_release_dir }}/storage
 @endtask
 
-@task('run_deploy_scripts')
+@task('link_env_file')
     echo 'Linking .env file'
     ln -nfs {{ $app_dir }}/.env {{ $new_release_dir }}/.env
-
-    echo 'Running deployment scripts'
-    cd {{ $new_release_dir }}
-    php artisan optimize:clear
 @endtask
 
 @task('generate_app_key')
@@ -83,6 +80,18 @@
     fi
     chown -R www-data:www-data {{ $app_dir }}/storage
     chmod -R 775 {{ $app_dir }}/storage
+@endtask
+
+@task('run_migrations')
+    echo 'Running migrations'
+    cd {{ $new_release_dir }}
+    php artisan migrate --force
+@endtask
+
+@task('run_optimize')
+    echo 'Running optimization commands'
+    cd {{ $new_release_dir }}
+    php artisan optimize:clear
 @endtask
 
 @task('run_migrations')
