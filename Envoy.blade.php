@@ -194,6 +194,7 @@
 
     # Bersihkan cache
     echo "Clearing application cache"
+    cd $current_release
     php artisan cache:clear
     php artisan config:clear
     php artisan view:clear
