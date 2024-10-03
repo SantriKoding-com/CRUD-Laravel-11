@@ -182,11 +182,13 @@
     # Cek apakah ada migrasi yang perlu di-rollback
     echo "Checking for migrations to rollback"
     cd {{ $app_dir }}/current
-    migration_status=$(php artisan migrate:status --no-ansi)
-    if echo "$migration_status" | grep -q "| Yes     |"; then
-        echo "Found migrations to rollback"
+    migration_status=$(php artisan migrate:status)
+    latest_batch=$(echo "$migration_status" | awk '/Ran/ {print $NF}' | sed 's/[][]//g' | sort -rn | head -n1)
+
+    if [ -n "$latest_batch" ] && [ "$latest_batch" -gt 0 ]; then
+        echo "Found migrations to rollback (Batch $latest_batch)"
         echo "Rolling back database migrations"
-        php artisan migrate:rollback --step=1
+        php artisan migrate:rollback
     else
         echo "No migrations to rollback"
     fi
