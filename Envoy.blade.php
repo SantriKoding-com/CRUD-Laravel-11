@@ -90,6 +90,11 @@
     php artisan migrate --force
 @endtask
 
+@task('simulate_failure')
+    echo 'Simulating failure'
+    false  # Ini akan menyebabkan task gagal
+@endtask
+
 @task('run_optimize')
     echo 'Running optimization commands'
     cd {{ $new_release_dir }}
@@ -112,17 +117,6 @@
     echo 'Delete .git folder'
     cd {{ $new_release_dir }}
     rm -rf .git
-@endtask
-
-@task('clean_failed_release')
-    echo "Checking if the release {{ $release }} is linked to 'current'"
-    
-    if [ "$(readlink {{ $app_dir }}/current)" != "{{ $new_release_dir }}" ]; then
-        echo "Release {{ $release }} is not linked. Deleting failed release."
-        rm -rf {{ $new_release_dir }}
-    else
-        echo "Release {{ $release }} is successfully linked."
-    fi
 @endtask
 
 @task('change_permission_owner')
@@ -167,5 +161,17 @@
         echo "Rollback successful"
     else
         echo "No previous release found. Rollback aborted."
+    fi
+@endtask
+
+<!-- clean failed release -->
+@task('clean_failed_release')
+    echo "Checking if the release {{ $release }} is linked to 'current'"
+    
+    if [ "$(readlink {{ $app_dir }}/current)" != "{{ $new_release_dir }}" ]; then
+        echo "Release {{ $release }} is not linked. Deleting failed release."
+        rm -rf {{ $new_release_dir }}
+    else
+        echo "Release {{ $release }} is successfully linked."
     fi
 @endtask
