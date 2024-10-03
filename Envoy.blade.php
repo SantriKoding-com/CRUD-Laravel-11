@@ -16,7 +16,7 @@
     generate_app_key
     handle_storage_directory
     run_migrations
-    simulate_failure
+    {{-- simulate_failure --}}
     run_optimize
     update_symlinks
     delete_git_metadata
@@ -191,9 +191,16 @@
     sudo systemctl restart php8.3-fpm
 
     # Hapus rilis yang gagal
+    echo 'get failed release'
+    latest_release=$(ls -dt {{ $releases_dir }}/* | head -n 1)
+
+    if [ -z "$latest_release" ]; then
+        echo "No latest release found. Rollback aborted."
+        exit 1
+    fi
+
     echo "Removing failed release"
-    rm -rf $(dirname $current_release)
+    rm -rf $latest_release
 
     echo "Rollback completed successfully"
 @endtask
-
