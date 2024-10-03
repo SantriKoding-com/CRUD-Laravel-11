@@ -156,8 +156,8 @@
     # Ambil rilis saat ini
     current_release=$(readlink {{ $app_dir }}/current)
 
-    # Ambil dua rilis terakhir (termasuk yang current)
-    releases=($(ls -dt {{ $releases_dir }}/* | head -n 2))
+    # Ambil semua rilis dan urutkan secara descending
+    releases=($(ls -dt {{ $releases_dir }}/*))
 
     if [ ${#releases[@]} -lt 2 ]; then
         echo "Not enough releases for rollback. Rollback aborted."
@@ -165,13 +165,22 @@
     fi
 
     # Tentukan rilis sebelumnya
-    if [ "$(basename $current_release)" = "$(basename ${releases[0]})" ]; then
-        previous_release=${releases[1]}
-    else
-        previous_release=${releases[0]}
+    for release in "${releases[@]}"; do
+        if [ "$release" != "$current_release" ]; then
+            previous_release=$release
+            break
+        fi
+    done
+
+    if [ -z "$previous_release" ]; then
+        echo "No previous release found. Rollback aborted."
+        exit 1
     fi
 
     echo "Rolling back from $(basename $current_release) to $(basename $previous_release)"
+
+    # Simpan rilis yang gagal untuk dihapus nanti
+    failed_release=$current_release
 
     # Hapus symlink current
     rm {{ $app_dir }}/current
@@ -179,18 +188,20 @@
     # Buat symlink ke rilis sebelumnya
     ln -s $previous_release {{ $app_dir }}/current
 
+    # Pindah ke rilis sebelumnya
+    cd $previous_release
+
     # Cek apakah ada migrasi yang perlu di-rollback
     echo "Checking for migrations to rollback"
-    cd {{ $app_dir }}/current
     migration_status=$(php artisan migrate:status)
     latest_batch=$(echo "$migration_status" | awk '/Ran/ {print $NF}' | sed 's/[][]//g' | sort -rn | head -n1)
 
-    if [ -n "$latest_batch" ] && [ "$latest_batch" -gt 0 ]; then
+    if [ -n "$latest_batch" ] && [ "$latest_batch" -gt 1 ]; then
         echo "Found migrations to rollback (Batch $latest_batch)"
         echo "Rolling back database migrations"
         php artisan migrate:rollback
     else
-        echo "No migrations to rollback"
+        echo "No migrations to rollback or only initial migrations present"
     fi
 
     # Bersihkan cache
@@ -205,7 +216,7 @@
 
     # Hapus rilis yang gagal
     echo "Removing failed release"
-    rm -rf $current_release
+    rm -rf $failed_release
 
     echo "Rollback completed successfully"
 @endtask
