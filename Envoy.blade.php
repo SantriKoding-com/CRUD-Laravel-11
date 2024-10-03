@@ -16,11 +16,10 @@
     generate_app_key
     handle_storage_directory
     run_migrations
-    simulate_failure  # Task ini akan membuat deployment gagal
+    simulate_failure
     run_optimize
     update_symlinks
     delete_git_metadata
-    clean_failed_release
     clean_old_releases
     change_permission_owner
     restart_php
@@ -92,7 +91,7 @@
 
 @task('simulate_failure')
     echo 'Simulating failure'
-    false  # Ini akan menyebabkan task gagal
+    false
 @endtask
 
 @task('run_optimize')
@@ -151,6 +150,12 @@
     # Ambil rilis sebelumnya
     previous_release=$(ls -dt {{ $releases_dir }}/* | sed -n '2p')
 
+    # Menghapus release yang gagal (current)
+    if [ -d {{ $app_dir }}/current ]; then
+        echo "Deleting failed release: $(readlink {{ $app_dir }}/current)"
+        rm -rf {{ $app_dir }}/current
+    fi
+
     if [ -n "$previous_release" ]; then
         echo "Linking to previous release: $previous_release"
         ln -nfs $previous_release {{ $app_dir }}/current
@@ -161,17 +166,5 @@
         echo "Rollback successful"
     else
         echo "No previous release found. Rollback aborted."
-    fi
-@endtask
-
-<!-- clean failed release -->
-@task('clean_failed_release')
-    echo "Checking if the release {{ $release }} is linked to 'current'"
-    
-    if [ "$(readlink {{ $app_dir }}/current)" != "{{ $new_release_dir }}" ]; then
-        echo "Release {{ $release }} is not linked. Deleting failed release."
-        rm -rf {{ $new_release_dir }}
-    else
-        echo "Release {{ $release }} is successfully linked."
     fi
 @endtask
