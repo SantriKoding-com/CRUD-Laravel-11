@@ -16,7 +16,7 @@
     generate_app_key
     handle_storage_directory
     run_migrations
-    simulate_failure
+    {{-- simulate_failure --}}
     run_optimize
     update_symlinks
     delete_git_metadata
@@ -199,7 +199,7 @@
         exit 1
     fi
 
-    echo "Removing failed release: $(basename $latest_release)"
+    echo "Removing failed release"
     rm -rf $latest_release
 
     echo "Rollback completed successfully"
