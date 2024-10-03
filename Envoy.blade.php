@@ -190,9 +190,9 @@
     echo "Restarting PHP-FPM"
     sudo systemctl restart php8.3-fpm
 
-    # Hapus rilis yang gagal
-    echo 'get failed release'
+    # Ambil rilis terakhir
     latest_release=$(ls -dt {{ $releases_dir }}/* | head -n 1)
+    echo "Latest release failed: $(basename $latest_release)"
 
     if [ -z "$latest_release" ]; then
         echo "No latest release found. Rollback aborted."
