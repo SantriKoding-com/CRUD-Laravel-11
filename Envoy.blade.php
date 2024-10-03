@@ -20,6 +20,7 @@
     run_optimize
     update_symlinks
     delete_git_metadata
+    clean_failed_release
     clean_old_releases
     change_permission_owner
     restart_php
@@ -111,6 +112,17 @@
     echo 'Delete .git folder'
     cd {{ $new_release_dir }}
     rm -rf .git
+@endtask
+
+@task('clean_failed_release')
+    echo "Checking if the release {{ $release }} is linked to 'current'"
+    
+    if [ "$(readlink {{ $app_dir }}/current)" != "{{ $new_release_dir }}" ]; then
+        echo "Release {{ $release }} is not linked. Deleting failed release."
+        rm -rf {{ $new_release_dir }}
+    else
+        echo "Release {{ $release }} is successfully linked."
+    fi
 @endtask
 
 @task('change_permission_owner')
