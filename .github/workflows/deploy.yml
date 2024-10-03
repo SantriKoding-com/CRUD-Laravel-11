@@ -5,6 +5,10 @@ on:
     branches:
       - main  # Ganti dengan branch yang ingin Anda gunakan
 
+  pull_request:
+    branches:
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -35,3 +39,9 @@ jobs:
         run: |
           composer global require laravel/envoy
           ~/.composer/vendor/bin/envoy run deploy --commit="${{ github.sha }}"
+      
+      - name: Rollback if Deployment Fails
+        if: failure()
+        run: |
+          echo "Deployment failed. Rolling back to previous version."
+          ~/.composer/vendor/bin/envoy run rollback
