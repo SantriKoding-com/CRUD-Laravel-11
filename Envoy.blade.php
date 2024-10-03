@@ -156,12 +156,19 @@
     # Ambil rilis saat ini
     current_release=$(readlink {{ $app_dir }}/current)
 
-    # Ambil rilis sebelumnya
-    previous_release=$(ls -dt {{ $releases_dir }}/* | grep -v "$(basename $current_release)" | head -n 1)
+    # Ambil dua rilis terakhir (termasuk yang current)
+    releases=($(ls -dt {{ $releases_dir }}/* | head -n 2))
 
-    if [ -z "$previous_release" ]; then
-        echo "No previous release found. Rollback aborted."
+    if [ ${#releases[@]} -lt 2 ]; then
+        echo "Not enough releases for rollback. Rollback aborted."
         exit 1
+    fi
+
+    # Tentukan rilis sebelumnya
+    if [ "$(basename $current_release)" = "$(basename ${releases[0]})" ]; then
+        previous_release=${releases[1]}
+    else
+        previous_release=${releases[0]}
     fi
 
     echo "Rolling back from $(basename $current_release) to $(basename $previous_release)"
@@ -172,10 +179,17 @@
     # Buat symlink ke rilis sebelumnya
     ln -s $previous_release {{ $app_dir }}/current
 
-    # Jalankan migrasi rollback jika diperlukan
-    echo "Rolling back database migrations"
+    # Cek apakah ada migrasi yang perlu di-rollback
+    echo "Checking for migrations to rollback"
     cd {{ $app_dir }}/current
-    php artisan migrate:rollback --step=1
+    migration_status=$(php artisan migrate:status --no-ansi)
+    if echo "$migration_status" | grep -q "| Yes     |"; then
+        echo "Found migrations to rollback"
+        echo "Rolling back database migrations"
+        php artisan migrate:rollback --step=1
+    else
+        echo "No migrations to rollback"
+    fi
 
     # Bersihkan cache
     echo "Clearing application cache"
