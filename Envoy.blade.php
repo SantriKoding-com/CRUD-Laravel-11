@@ -16,7 +16,7 @@
     generate_app_key
     handle_storage_directory
     run_migrations
-    simulate_failure
+    {{-- simulate_failure --}}
     run_optimize
     update_symlinks
     delete_git_metadata
