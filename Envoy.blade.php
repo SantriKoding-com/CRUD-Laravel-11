@@ -157,44 +157,31 @@
     current_release=$(readlink -f {{ $app_dir }}/current)
     echo "Current release: $(basename $current_release)"
 
-    # Ambil rilis terbaru (yang gagal)
-    latest_release=$(ls -dt {{ $releases_dir }}/* | head -n 1)
+    # Ambil rilis sebelumnya
+    previous_release=$(ls -dt {{ $releases_dir }}/* | sed -n '2p')
 
-    if [ -z "$latest_release" ]; then
-        echo "No latest release found. Rollback aborted."
+    if [ -z "$previous_release" ]; then
+        echo "No previous release found. Rollback aborted."
         exit 1
     fi
 
-    echo "Latest failed release: $(basename $latest_release)"
-
-    # Cek status migrasi untuk current release
-    echo "Checking migration status for current release"
-    current_migrated_count=$(cd $current_release && php artisan migrate:status | grep '\[1\]' | wc -l)
-
-    # Cek status migrasi untuk latest failed release
-    echo "Checking migration status for latest failed release"
-    latest_migrated_count=$(cd $latest_release && php artisan migrate:status | grep '\[1\]' | wc -l)
-
-    echo "Current release migrations count: $current_migrated_count"
-    echo "Latest failed release migrations count: $latest_migrated_count"
+    echo "Rolling back to: $(basename $previous_release)"
 
     # Hapus symlink current
     rm {{ $app_dir }}/current
 
     # Buat symlink ke rilis sebelumnya
-    ln -s $latest_release {{ $app_dir }}/current
+    ln -s $previous_release {{ $app_dir }}/current
 
-    # Jika jumlah migrasi di current release lebih banyak dari latest release, lakukan rollback
-    if [ "$current_migrated_count" -gt "$latest_migrated_count" ]; then
-        echo "Rolling back last batch of migrations"
-        php artisan migrate:rollback --force
-    else
-        echo "No migrations to rollback, current migrations match or are fewer than latest release"
-    fi
+    # Pindah ke rilis sebelumnya
+    cd $previous_release
+
+    # Rollback migrasi
+    echo "Rolling back last batch of migrations"
+    php artisan migrate:rollback --force
 
     # Bersihkan cache
     echo "Clearing application cache"
-    cd $current_release
     php artisan cache:clear
     php artisan config:clear
     php artisan view:clear
@@ -203,7 +190,15 @@
     echo "Restarting PHP-FPM"
     sudo systemctl restart php8.3-fpm
 
-    # Hapus rilis yang gagal
+    # Ambil rilis terakhir
+    latest_release=$(ls -dt {{ $releases_dir }}/* | head -n 1)
+    echo "Latest release failed: $(basename $latest_release)"
+
+    if [ -z "$latest_release" ]; then
+        echo "No latest release found. Rollback aborted."
+        exit 1
+    fi
+
     echo "Removing failed release: $(basename $latest_release)"
     rm -rf $latest_release
 
