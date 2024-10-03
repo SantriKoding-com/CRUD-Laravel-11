@@ -16,6 +16,7 @@
     generate_app_key
     handle_storage_directory
     run_migrations
+    simulate_failure  # Task ini akan membuat deployment gagal
     run_optimize
     update_symlinks
     delete_git_metadata
