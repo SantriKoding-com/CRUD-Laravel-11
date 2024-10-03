@@ -16,7 +16,7 @@
     generate_app_key
     handle_storage_directory
     run_migrations
-    simulate_failure
+    {{-- simulate_failure --}}
     run_optimize
     update_symlinks
     delete_git_metadata
@@ -159,7 +159,7 @@
 
     # Ambil rilis sebelumnya
     previous_release=$(ls -dt {{ $releases_dir }}/* | sed -n '2p')
-    
+
     if [ -z "$previous_release" ]; then
         echo "No previous release found. Rollback aborted."
         exit 1
@@ -192,7 +192,8 @@
 
     # Hapus rilis yang gagal
     echo "Removing failed release"
-    rm -rf $current_release
+    rm -rf $(dirname $current_release)
 
     echo "Rollback completed successfully"
 @endtask
+
