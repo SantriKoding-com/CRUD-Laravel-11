@@ -147,24 +147,49 @@
     echo "Rolling back to previous release"
     cd {{ $app_dir }}
 
+    # Cek apakah ada symlink current
+    if [ ! -L {{ $app_dir }}/current ]; then
+        echo "No current release found. Rollback aborted."
+        exit 1
+    fi
+
+    # Ambil rilis saat ini
+    current_release=$(readlink {{ $app_dir }}/current)
+
     # Ambil rilis sebelumnya
-    previous_release=$(ls -dt {{ $releases_dir }}/* | sed -n '2p')
+    previous_release=$(ls -dt {{ $releases_dir }}/* | grep -v "$(basename $current_release)" | head -n 1)
 
-    # Menghapus release yang gagal (current)
-    if [ -d {{ $app_dir }}/current ]; then
-        echo "Deleting failed release: $(readlink {{ $app_dir }}/current)"
-        rm -rf {{ $app_dir }}/current
-    fi
-
-    if [ -n "$previous_release" ]; then
-        echo "Linking to previous release: $previous_release"
-        ln -nfs $previous_release {{ $app_dir }}/current
-
-        echo "Restarting php-fpm"
-        sudo systemctl restart php8.3-fpm
-
-        echo "Rollback successful"
-    else
+    if [ -z "$previous_release" ]; then
         echo "No previous release found. Rollback aborted."
+        exit 1
     fi
+
+    echo "Rolling back from $(basename $current_release) to $(basename $previous_release)"
+
+    # Hapus symlink current
+    rm {{ $app_dir }}/current
+
+    # Buat symlink ke rilis sebelumnya
+    ln -s $previous_release {{ $app_dir }}/current
+
+    # Jalankan migrasi rollback jika diperlukan
+    echo "Rolling back database migrations"
+    cd {{ $app_dir }}/current
+    php artisan migrate:rollback --step=1
+
+    # Bersihkan cache
+    echo "Clearing application cache"
+    php artisan cache:clear
+    php artisan config:clear
+    php artisan view:clear
+
+    # Restart PHP-FPM
+    echo "Restarting PHP-FPM"
+    sudo systemctl restart php8.3-fpm
+
+    # Hapus rilis yang gagal
+    echo "Removing failed release"
+    rm -rf $current_release
+
+    echo "Rollback completed successfully"
 @endtask
